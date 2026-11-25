@@ -17,6 +17,7 @@ Rendered at 320×240 and pushed through JPEG compression twice per frame, at rou
 | M | Mute |
 | R, R | Back to title |
 | Z (title screen) | Zen mode: endless floor, no enemies, Esc to leave |
+| X (title screen) | End credits (or the Credits button) |
 | C (title screen) | Cheat mode: 1–4 jump to a level, K collect all diamonds, B big head, N next level |
 
 On touch screens: swipe or use the on-screen pad.

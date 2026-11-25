@@ -27,8 +27,9 @@ body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:19px
 #pad{display:none;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,52px);gap:6px}
 #pad button{font:inherit;font-size:26px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;touch-action:manipulation}
 #pad button:active{background:var(--edge)}
-#pad button:focus-visible,#zenbtn:focus-visible{outline:2px solid var(--keyfg)}
-#zenbtn{margin-top:14px;font:inherit;font-size:17px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;padding:4px 14px}
+#pad button:focus-visible,#btns button:focus-visible{outline:2px solid var(--keyfg)}
+#btns{margin-top:14px;display:flex;gap:10px;justify-content:center}
+#btns button{font:inherit;font-size:17px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;padding:4px 14px}
 #up{grid-column:2}#left{grid-column:1;grid-row:2}#down{grid-column:2;grid-row:2}#right{grid-column:3;grid-row:2}
 @media (pointer:coarse){#pad{display:grid}.keys{display:none}#screen{width:min(100%,calc((100dvh - 230px) * 4 / 3))}}
 </style>
@@ -43,8 +44,8 @@ body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:19px
   <button id="down" aria-label="Roll down">▼</button>
   <button id="right" aria-label="Roll right">▶</button>
 </div>
-<div class="help"><span class="keys"><b>ARROWS / WASD</b> roll Cube · <b>ANY KEY</b> continue · </span><b>M</b> mute · <span class="keys"><b>R</b> title screen · </span><span class="keys"><b>Z</b> zen mode on the title screen · </span>cutting edge 3d graphics</div>
-<button id="zenbtn" type="button">Zen mode</button>
+<div class="help"><span class="keys"><b>ARROWS / WASD</b> roll Cube · <b>ANY KEY</b> continue · </span><b>M</b> mute · <span class="keys"><b>R</b> title screen · </span><span class="keys"><b>Z</b> zen mode · <b>X</b> credits (on the title screen) · </span>cutting edge 3d graphics</div>
+<div id="btns"><button id="zenbtn" type="button">Zen mode</button><button id="creditsbtn" type="button">Credits</button></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -834,6 +835,7 @@ addEventListener('keydown',e=>{
     else { restartAsk=now+2500; sfx.blip(); say('BACK TO TITLE? PRESS R AGAIN',2500); } return; }
   if(state==='play' && (e.code==='KeyP'||e.code==='Escape')){ say('THE FUN CANNOT BE HALTED',1800); sfx.bonk(); return; }
   if(state==='title' && e.code==='KeyZ'){ toggleZen(); return; }
+  if(state==='title' && e.code==='KeyX' && !e.repeat){ showCredits(); return; }
   // cheat mode (for debugging): C on the title screen, then 1-4 jumps to a level; in a level K = all diamonds, B = big head, N = next level
   if(state==='title' && e.code==='KeyC'){ cheat=!cheat; sfx.blip(); return; }
   if(cheat && /^Digit[1-4]$/.test(e.code) && !e.repeat){ musicStarted=true; stopMusic(); startLevel(+e.code.slice(5)-1); return; }
@@ -856,6 +858,9 @@ const zenBtn=document.getElementById('zenbtn');
 zenBtn.addEventListener('click',()=>{ const now=performance.now();
   if(now<zenAsk){ zenAsk=0; toggleZen(); out.focus(); return; }
   zenAsk=now+2500; sfx.blip(); say(zen?'LEAVE ZEN? TAP AGAIN':'ZEN MODE? TAP AGAIN',2500); });
+function showCredits(){ audio(); musicStarted=true; zenAsk=0; sfx.blip(); stopMusic(); startCredits(); out.focus(); }
+const creditsBtn=document.getElementById('creditsbtn');
+creditsBtn.addEventListener('click',()=>{ if(state==='title') showCredits(); });
 for(const [id,d] of [['up',[0,-1]],['down',[0,1]],['left',[-1,0]],['right',[1,0]]])
   document.getElementById(id).addEventListener('pointerdown',e=>{ e.preventDefault(); audio(); tryMove(d[0],d[1]); });
 
@@ -874,7 +879,7 @@ function overlay(ctx,now){
     txt(ctx,'CUBE',RW/2,92,86,chrome(ctx,58,126));
     txt(ctx,'DEFENDER OF THE POLYVERSE',RW/2,140,15,'#ffe45c');
     if(blink) txt(ctx,musicStarted?'PRESS ANY BUTTON AGAIN':'PRESS ANY BUTTON',RW/2,184,14);
-    txt(ctx,now<zenAsk?'ZEN MODE? TAP AGAIN':'Z: ZEN MODE',RW/2,204,now<zenAsk?12:9,now<zenAsk?'#ffe45c':'#cfd3ff');
+    txt(ctx,now<zenAsk?'ZEN MODE? TAP AGAIN':'Z: ZEN MODE · X: CREDITS',RW/2,204,now<zenAsk?12:9,now<zenAsk?'#ffe45c':'#cfd3ff');
     if(cheat) txt(ctx,'CHEAT MODE · PRESS 1-4 TO SKIP TO A LEVEL',RW/2,26,9,'#ff7ad9');
     txt(ctx,'IN DEVELOPMENT FOR OVER A DECADE · UNIBLOK POWER CONSOLE',RW/2,226,8,'#9aa0c8');
     return;
@@ -951,6 +956,7 @@ function frame(now){
   requestAnimationFrame(frame);
   const dt=Math.min(60,now-last); last=now; update(now,dt);
   const showZen=state==='title'||(zen&&state==='play'); if(zenBtn.hidden===showZen) zenBtn.hidden=!showZen;
+  const showCr=state==='title'; if(creditsBtn.hidden===showCr) creditsBtn.hidden=!showCr;
   const zl=zen?'Leave zen':'Zen mode'; if(zenBtn.textContent!==zl) zenBtn.textContent=zl;
   if(!busy && now-lastPresent>=50){            // ~20 fps, like it was meant to be
     lastPresent=now; const inAd=state==='ad'&&adPhase==='ad';
