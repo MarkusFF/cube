@@ -651,6 +651,39 @@ SONGS.zen={bpm:72, play(s,t,q){ const bar=Math.floor(s/16)%4, b=s%16, ch=PROG[ba
   if(s%256>=128){ const ms=s%128; for(const [st,n,len] of LEVEL_MEL) if(st===ms) syn(t,n+12,Math.max(3,len)*q*1.5,{type:'sine',vol:0.035,cut:5000,att:0.005,rel:0.5}); } }};
 function toggleZen(){ audio(); musicStarted=true; if(zen) toTitle(); else startZen(); }
 
+// ---------- END CREDITS ----------
+const CREDITS=[
+  {t:'CUBE',size:40},{t:'DEFENDER OF THE POLYVERSE',size:11,c:'#ffe45c'},{gap:1},
+  {h:'A PROJECT BY',n:'MARKUS F'},{gap:1},
+  {h:'INSPIRED BY',n:'"CUBE" (2006)'},{t:'A PARODY GAME ADVERT BY FUNNYMOVIEINTERNET',size:9},{gap:1},
+  {h:'CODING',n:'CLAUDE OPUS 5.5'},{h:'ART',n:'CLAUDE OPUS 5.5'},{h:'MUSIC',n:'CLAUDE OPUS 5.5'},
+  {h:'FUNNY TEXT',n:'CLAUDE OPUS 5.5'},{h:'UNFUNNY TEXT',n:'ALSO CLAUDE OPUS 5.5'},{gap:1},
+  {h:'CUBE',n:'AS ITSELF'},{h:'THE CONE',n:'AS THE CONE'},{gap:1},
+  {h:'NARRATOR',n:'YOUR BROWSER'},{h:'RESOLUTION CONSULTANT',n:'320 × 240'},
+  {h:'COMPRESSION ARTIFACTS',n:'ADDED IN POST. TWICE.'},{h:'FRAME RATE',n:'ABOUT 20. ON A GOOD DAY.'},
+  {gap:1},
+  {h:'IN DEVELOPMENT FOR',n:'OVER A DECADE'},{h:'ACTUALLY MADE IN',n:'ONE EVENING'},{gap:1},
+  {t:'SEVERAL CONES WERE HARMED',size:11},{t:'IN THE MAKING OF THIS GAME',size:11},{gap:1},
+  {h:'SPECIAL THANKS',n:'THE THIRD DIMENSION'},{gap:2},
+  {t:'THANK YOU FOR PLAYING',size:14,c:'#ffe45c'},{t:'CUBE',size:52}
+];
+let creditsT=0;
+const CREDIT_ROW=30, CREDIT_SPEED=0.034; // px per ms
+function creditsHeight(){ return CREDITS.reduce((a,e)=>a+(e.gap?e.gap*CREDIT_ROW:e.h?CREDIT_ROW+6:(e.size>30?e.size:CREDIT_ROW)),0); }
+function startCredits(){ buildLevel(0); state='credits'; creditsT=0; titleT=0; playSong('title'); }
+function creditsTick(dt){ creditsT+=dt; if(RH-creditsT*CREDIT_SPEED+creditsHeight()< -40 && creditsT>3000) toTitle(); }
+function creditsOverlay(ctx){
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,RW,RH);
+  let y=RH+20-creditsT*CREDIT_SPEED;
+  for(const e of CREDITS){
+    if(e.gap){ y+=e.gap*CREDIT_ROW; continue; }
+    if(e.h){ if(y>-30&&y<RH+30){ txt(ctx,e.h,RW/2,y,10,'#c2c6e8'); txt(ctx,e.n,RW/2,y+14,15,'#ffffff'); } y+=CREDIT_ROW+6; continue; }
+    if(y>-40&&y<RH+40) txt(ctx,e.t,RW/2,y,e.size||12,e.c||(e.size>30?chrome(ctx,y-e.size/2,y+e.size/2):'#ffffff'));
+    y+=e.size>30?e.size:CREDIT_ROW;
+  }
+  if(creditsT>1500 && Math.floor(creditsT/600)%2===0) txt(ctx,'PRESS ANY BUTTON TO SKIP',RW-8,RH-10,7,'#6b6680','right');
+}
+
 // ---------- STATE ----------
 let state='title', pages=[], pageI=0, pageAt=0, onDone=null, caption='', captionUntil=0, anim=null, queued=null, titleT=0;
 
@@ -658,6 +691,7 @@ function showCard(p, done){ state='card'; pages=p; pageI=0; onDone=done; openPag
 function openPage(){ const p=pages[pageI]; pageAt=performance.now(); if(p.sting){ sfx.sting(); glitchUntil=pageAt+900; } else sfx.blip(); speak([p.big,p.small].filter(Boolean).join('. ')); }
 function advance(){
   if(state==='title'){ audio(); if(!musicStarted){ musicStarted=true; playSong('title'); return; } sfx.blip(); startLevel(0); return; }
+  if(state==='credits'){ if(creditsT>1500){ sfx.blip(); toTitle(); } return; }
   if(state!=='card') return;
   const p=pages[pageI]; if(performance.now()-pageAt < (p.hold||450)) return;
   pageI++; if(pageI<pages.length) openPage(); else { const f=onDone; onDone=null; f&&f(); }
@@ -669,7 +703,7 @@ function zenCaption(ctx,t){ if(t.length<=34){ txt(ctx,t,RW/2,RH-22,13,'#ffe45c')
 function say(t,ms=1600){ caption=t; captionUntil=performance.now()+ms; }
 
 function tryMove(dx,dz){
-  if(state==='card'||state==='title'){ advance(); return; }
+  if(state==='card'||state==='title'||state==='credits'){ advance(); return; }
   if(state!=='play') return;
   if(anim){ queued=[dx,dz]; return; }
   const nx=px+dx, nz=pz+dz, c=cell(nx,nz);
@@ -784,7 +818,7 @@ function afterAscend(){
   if(lvl<LEVELS.length-1) showCard([stats], ()=>startLevel(lvl+1));
   else showCard([stats,{big:'VICTORY',small:'CUBE HAS SAVED THE POLYVERSE'},
                  {big:'TOTAL BONKS', small:String(totalBonks)+'   A NEW WORLD RECORD'},
-                 {big:'CUBE 2', small:'COMING TO YOUR DIMENSION SOON'}], ()=>{ totalBonks=0; toTitle(); });
+                 {big:'CUBE 2', small:'COMING TO YOUR DIMENSION SOON'}], ()=>{ totalBonks=0; startCredits(); });
 }
 function toTitle(){ buildLevel(0); state='title'; titleT=0; speak('cube'); if(musicStarted) playSong('title'); }
 
@@ -806,6 +840,7 @@ addEventListener('keydown',e=>{
   if(cheat && state==='play' && !zen && !e.repeat){
     if(e.code==='KeyK'){ for(const d of diamonds.values()) world.remove(d); diamonds.clear(); got=total; allDiamonds(); return; }
     if(e.code==='KeyB'){ bigHead(performance.now()); return; }
+    if(e.code==='KeyE'){ stopMusic(); startCredits(); return; }
     if(e.code==='KeyN'){ stopMusic(); startLevel(Math.min(3,lvl+1)); return; } }
   const d=DIRS[e.code];
   if(d){ e.preventDefault(); if(!e.repeat||state==='play') tryMove(d[0],d[1]); return; }
@@ -833,6 +868,7 @@ function txt(ctx,s,x,y,size,fill='#fff',align='center',maxW=296,fam='"Archivo Bl
 }
 function chrome(ctx,y0,y1){ const g=ctx.createLinearGradient(0,y0,0,y1); g.addColorStop(0,'#ffffff'); g.addColorStop(0.48,'#b8c6ff'); g.addColorStop(0.52,'#5a64c8'); g.addColorStop(1,'#e6ecff'); return g; }
 function overlay(ctx,now){
+  if(state==='credits'){ creditsOverlay(ctx); return; }
   const blink = Math.floor(now/450)%2===0;
   if(state==='title'){
     txt(ctx,'CUBE',RW/2,92,86,chrome(ctx,58,126));
@@ -897,7 +933,8 @@ function update(now,dt){
   if(beam && beam.visible) beam.material.opacity=0.2+Math.sin(now/120)*0.08;
   if(zen){ sun.position.set(cube.position.x-5,12,cube.position.z+4); sun.target.position.set(cube.position.x,0,cube.position.z); }
   // camera
-  if(state==='title'){ titleT+=dt; const a=titleT/2600; cube.rotation.set(0.4, a*1.7, 0.25);
+  if(state==='credits') creditsTick(dt);
+  if(state==='title'||state==='credits'){ titleT+=dt; const a=titleT/2600; cube.rotation.set(0.4, a*1.7, 0.25);
     cube.position.set(px,0.9+Math.sin(titleT/500)*0.15,pz);
     camera.up.set(0,1,0); camera.position.set(px+Math.sin(a)*4.2, 2.6, pz+Math.cos(a)*4.2); camera.lookAt(px,0.9,pz); }
   else {
