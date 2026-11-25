@@ -28,7 +28,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:19px
 #pad button{font:inherit;font-size:26px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;touch-action:manipulation}
 #pad button:active{background:var(--edge)}
 #pad button:focus-visible,#zenbtn:focus-visible{outline:2px solid var(--keyfg)}
-#zenbtn{font:inherit;font-size:17px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;padding:4px 14px}
+#zenbtn{margin-top:14px;font:inherit;font-size:17px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;padding:4px 14px}
 #up{grid-column:2}#left{grid-column:1;grid-row:2}#down{grid-column:2;grid-row:2}#right{grid-column:3;grid-row:2}
 @media (pointer:coarse){#pad{display:grid}.keys{display:none}#screen{width:min(100%,calc((100dvh - 230px) * 4 / 3))}}
 </style>
@@ -328,7 +328,7 @@ function bigTick(now,dt){
 const ARCH='"Archivo Black","Arial Black",Impact,sans-serif', SERIF='Georgia,"Times New Roman",serif';
 const ADVERT={a:0,b:5500,s:'ADVERTISEMENT',x:8,y:12,size:8,al:'left'};
 const ADS={1:'hex',2:'noir',3:'para'}, adsShown=new Set();
-let ad=null, adT=0, adPhase='', pendingAd=null;
+let ad=null, adT=0, adStart=0, adPhase='', pendingAd=null, zenAsk=0;
 function makeAd(kind){
   const sc=new THREE.Scene(), cam=new THREE.PerspectiveCamera(60,RW/RH,0.1,100), ad={scene:sc,camera:cam,kind};
   if(kind==='hex'){ // HEXAGON OVERDRIVE: too fast, too loud, too many sides
@@ -337,12 +337,12 @@ function makeAd(kind){
     for(let i=0;i<14;i++){ const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:i%2?0xff2bd6:0x21f0ff})); m.position.z=-i*2.6; sc.add(m); rings.push(m); }
     const ship=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.2,6), new THREE.MeshBasicMaterial({color:0xffffff})); ship.rotation.x=Math.PI/2; sc.add(ship);
     cam.position.set(0,0,3);
-    ad.update=(t,dt)=>{ for(const r of rings){ r.position.z+=dt*0.03; if(r.position.z>3) r.position.z-=36.4; r.rotation.z=t/500+r.position.z*0.12; }
+    ad.update=(t)=>{ rings.forEach((r,i)=>{ r.position.z=((-i*2.6+t*0.03+33.4)%36.4+36.4)%36.4-33.4; r.rotation.z=t/500+r.position.z*0.12; });
       ship.position.set(Math.sin(t/230)*1.3,Math.cos(t/310)*0.7-0.4,-2); ship.rotation.y=t/80; cam.rotation.z=Math.sin(t/500)*0.6; };
     ad.text=[ADVERT,{a:200,b:1700,s:'SIX SIDES.',y:120,size:30,c:'#21f0ff',shake:1},{a:1700,b:3000,s:'ZERO MERCY.',y:120,size:30,c:'#ff2bd6',shake:1},
       {a:3000,b:5000,s:'HEXAGON',y:96,size:44,shake:2},{a:3000,b:5000,s:'OVERDRIVE',y:140,size:44,c:'#ffe45c',shake:2},
       {a:3600,b:5000,s:'COMING SOON · UNIBLOK POWER CONSOLE',y:218,size:9}];
-    ad.voice=['hexagon overdrive! six sides! zero mercy!',1.4,1.4]; ad.song='hex'; ad.flash=true;
+    ad.voice=['hexagon overdrive! six sides! zero mercy!',1.15,1.3]; ad.song='hex'; ad.flash=true;
   } else if(kind==='noir'){ // POLY NOIR: it's raining, in black and white, forever
     sc.background=new THREE.Color(0x0a0a0c); sc.fog=new THREE.Fog(0x0a0a0c,4,18); sc.add(new THREE.AmbientLight(0xffffff,0.08));
     const floor=new THREE.Mesh(new THREE.PlaneGeometry(40,40), new THREE.MeshPhongMaterial({color:0x444444,shininess:80})); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; sc.add(floor);
@@ -390,10 +390,10 @@ SONGS.noir={bpm:76, play(s,t,q){ const b=s%16, bar=Math.floor(s/16)%2;
 SONGS.para={bpm:66, play(s,t,q){ const b=s%16, bar=Math.floor(s/16)%2, ch=bar?[53,57,60,64]:[60,64,67,71];
   if(b===0) for(const n of ch){ syn(t,n,16*q,{vol:0.035,cut:1600,att:0.6,rel:0.8,det:-6}); syn(t,n,16*q,{type:'triangle',vol:0.03,cut:1600,att:0.6,rel:0.8,det:6}); }
   if(b%2===0) syn(t,ch[(b/2)%4]+24,q*3,{type:'sine',vol:0.04,cut:5000,att:0.005,rel:0.4}); }};
-function startAd(kind){ state='ad'; queued=null; ad=makeAd(kind); adT=0; adPhase='brb'; stopMusic(); sfx.blip(); speak('intermission'); }
-function adTick(now,dt){
-  adT+=dt;
-  if(adPhase==='brb' && adT>1000){ adPhase='ad'; adT=0; playSong(ad.song); speak(...ad.voice); }
+function startAd(kind){ state='ad'; queued=null; ad=makeAd(kind); adT=0; adStart=performance.now(); adPhase='brb'; stopMusic(); sfx.blip(); speak('intermission'); }
+function adTick(now){
+  const prev=adT; adT=now-adStart; const dt=Math.max(0,adT-prev);
+  if(adPhase==='brb' && adT>1000){ adPhase='ad'; adT=0; adStart=now; playSong(ad.song); speak(...ad.voice); }
   else if(adPhase==='ad'){ ad.update(adT,dt); if(adT>5000 && ad.quietTail && M.song===ad.song) stopMusic(); if(adT>5000+(ad.tail||0)){ adPhase='back'; adT=99999; stopMusic(); try{ speechSynthesis.cancel(); }catch(e){} } }
   if(adPhase==='back' && adT>1700){ ad=null; state='play';
     if(floaty) floaty.until+=8500; else if(floatyAt) floatyAt+=8500; if(bigUntil>now) bigUntil+=8500;
@@ -817,7 +817,10 @@ out.addEventListener('pointerdown',e=>{ audio(); down=[e.clientX,e.clientY]; out
 out.addEventListener('pointerup',e=>{ if(!down) return; const dx=e.clientX-down[0], dy=e.clientY-down[1]; down=null;
   if(Math.hypot(dx,dy)<24){ advance(); return; }
   if(Math.abs(dx)>Math.abs(dy)) tryMove(Math.sign(dx),0); else tryMove(0,Math.sign(dy)); });
-document.getElementById('zenbtn').addEventListener('click',()=>{ toggleZen(); out.focus(); });
+const zenBtn=document.getElementById('zenbtn');
+zenBtn.addEventListener('click',()=>{ const now=performance.now();
+  if(now<zenAsk){ zenAsk=0; toggleZen(); out.focus(); return; }
+  zenAsk=now+2500; sfx.blip(); say(zen?'LEAVE ZEN? TAP AGAIN':'ZEN MODE? TAP AGAIN',2500); });
 for(const [id,d] of [['up',[0,-1]],['down',[0,1]],['left',[-1,0]],['right',[1,0]]])
   document.getElementById(id).addEventListener('pointerdown',e=>{ e.preventDefault(); audio(); tryMove(d[0],d[1]); });
 
@@ -835,7 +838,7 @@ function overlay(ctx,now){
     txt(ctx,'CUBE',RW/2,92,86,chrome(ctx,58,126));
     txt(ctx,'DEFENDER OF THE POLYVERSE',RW/2,140,15,'#ffe45c');
     if(blink) txt(ctx,musicStarted?'PRESS ANY BUTTON AGAIN':'PRESS ANY BUTTON',RW/2,184,14);
-    txt(ctx,'Z: ZEN MODE',RW/2,204,9,'#cfd3ff');
+    txt(ctx,now<zenAsk?'ZEN MODE? TAP AGAIN':'Z: ZEN MODE',RW/2,204,now<zenAsk?12:9,now<zenAsk?'#ffe45c':'#cfd3ff');
     if(cheat) txt(ctx,'CHEAT MODE · PRESS 1-4 TO SKIP TO A LEVEL',RW/2,26,9,'#ff7ad9');
     txt(ctx,'IN DEVELOPMENT FOR OVER A DECADE · UNIBLOK POWER CONSOLE',RW/2,226,8,'#9aa0c8');
     return;
@@ -887,7 +890,7 @@ function update(now,dt){
   }
   for(const c of debris){ const k=Math.min(1,(now-c.crushAt)/500); c.mesh.visible=true; c.mesh.scale.set(c.s*(1+k*0.8),c.s*Math.max(0.05,1-k),c.s*(1+k*0.8)); c.mesh.position.y=c.h*c.s*Math.max(0.05,1-k); }
   if(state==='event' && event && now>event.until){ const f=event.fn; event=null; state='play'; f(); }
-  if(state==='ad') adTick(now,dt);
+  if(state==='ad') adTick(now);
   if(pendingAd && now>pendingAd.at && state==='play' && !anim){ const k=pendingAd.kind; pendingAd=null; adsShown.add(lvl); startAd(k); }
   floatyTick(now,dt); bigTick(now,dt);
   for(const d of diamonds.values()){ d.rotation.y+=dt*0.003; d.position.y=0.6+Math.sin(now/300+d.position.x)*0.08; }
@@ -910,6 +913,8 @@ function update(now,dt){
 function frame(now){
   requestAnimationFrame(frame);
   const dt=Math.min(60,now-last); last=now; update(now,dt);
+  const showZen=state==='title'||(zen&&state==='play'); if(zenBtn.hidden===showZen) zenBtn.hidden=!showZen;
+  const zl=zen?'Leave zen':'Zen mode'; if(zenBtn.textContent!==zl) zenBtn.textContent=zl;
   if(!busy && now-lastPresent>=50){            // ~20 fps, like it was meant to be
     lastPresent=now; const inAd=state==='ad'&&adPhase==='ad';
     renderer.render(inAd?ad.scene:scene, inAd?ad.camera:camera);
