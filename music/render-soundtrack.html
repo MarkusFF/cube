@@ -1,0 +1,123 @@
+<!doctype html><meta charset="utf-8"><body><script>
+// Offline renderer for the Cube soundtrack: same instruments and tinny master chain as the game,
+// arranged as: intro (the in-game loop as it is now) -> melody section -> final hit.
+const hz = m => 440*Math.pow(2,(m-69)/12);
+let ac, BUS, NOISE;
+function setup(len){
+  ac = new OfflineAudioContext(2, Math.ceil(len*44100), 44100);
+  const g=ac.createGain(); g.gain.value=0.42;
+  const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=140;
+  const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3600;
+  const sh=ac.createWaveShaper(); const c=new Float32Array(1024); for(let i=0;i<1024;i++){ const x=i/511.5-1; c[i]=Math.tanh(x*2.2); } sh.curve=c;
+  g.connect(hp).connect(sh).connect(lp).connect(ac.destination);
+  const nb=ac.createBuffer(1,ac.sampleRate*2,ac.sampleRate), d=nb.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  NOISE=nb; BUS=g;
+}
+function syn(t,m,dur,{type='sawtooth',vol=0.08,cut=2000,det=0,att=0.01,rel=0.08,vib=0}={}){
+  const o=ac.createOscillator(), f=ac.createBiquadFilter(), g=ac.createGain();
+  o.type=type; o.frequency.value=hz(m); o.detune.value=det;
+  if(vib){ const l=ac.createOscillator(), lg=ac.createGain(); l.frequency.value=5.5; lg.gain.value=vib; l.connect(lg).connect(o.detune); l.start(t); l.stop(t+dur+0.1); }
+  f.type='lowpass'; f.frequency.value=cut;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+att); g.gain.setValueAtTime(vol,t+Math.max(att,dur-rel)); g.gain.linearRampToValueAtTime(0,t+dur);
+  o.connect(f).connect(g).connect(BUS); o.start(t); o.stop(t+dur+0.05);
+}
+// melody lead: two detuned saws + a square an octave down, a bit of vibrato
+function lead(t,m,dur,vol=0.05,cut=2800){
+  syn(t,m,dur,{vol,cut,det:-8,vib:12,rel:0.06}); syn(t,m,dur,{vol,cut,det:8,vib:12,rel:0.06});
+  syn(t,m-12,dur,{type:'square',vol:vol*0.6,cut:cut*0.7,rel:0.06});
+}
+function drum(t,kind){
+  if(kind==='kick'||kind==='tom'){ const o=ac.createOscillator(), g=ac.createGain(), lo=kind==='kick';
+    o.frequency.setValueAtTime(lo?150:120,t); o.frequency.exponentialRampToValueAtTime(lo?42:70,t+(lo?0.22:0.35));
+    g.gain.setValueAtTime(lo?0.55:0.4,t); g.gain.exponentialRampToValueAtTime(0.001,t+(lo?0.3:0.5)); o.connect(g).connect(BUS); o.start(t); o.stop(t+0.55); return; }
+  const s=ac.createBufferSource(), f=ac.createBiquadFilter(), g=ac.createGain();
+  const sn=kind==='snare', cr=kind==='crash';
+  s.buffer=NOISE; f.type=sn?'bandpass':'highpass'; f.frequency.value=sn?1700:(cr?5000:7000);
+  const v=sn?0.38:(cr?0.16:0.09), d=sn?0.22:(cr?1.8:0.045);
+  g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(0.001,t+d);
+  s.connect(f).connect(g).connect(BUS); s.start(t); s.stop(t+d+0.05);
+}
+const triad=(r,minor)=>[r, r+(minor?3:4), r+7];
+const PROG=[[57,1],[53,0],[60,0],[55,0]]; // Am F C G
+
+const TITLE_MEL=[[0,76,8],[8,72,4],[12,74,4],[16,77,8],[24,76,4],[28,72,4],[32,79,8],[40,76,4],[44,72,4],[48,74,12],[60,71,4],
+  [64,76,8],[72,81,4],[76,79,4],[80,77,8],[88,76,4],[92,77,4],[96,79,6],[102,76,2],[104,72,8],[112,74,8],[120,71,4],[124,74,4]];
+const LEVEL_MEL=[[0,76,3],[3,76,3],[6,74,2],[8,72,4],[12,74,4],[16,72,3],[19,69,3],[22,72,2],[24,77,6],[30,76,2],
+  [32,76,3],[35,74,3],[38,72,2],[40,79,4],[44,76,4],[48,74,6],[54,72,2],[56,71,4],[60,67,4],
+  [64,76,3],[67,76,3],[70,74,2],[72,72,4],[76,74,4],[80,77,3],[83,77,3],[86,79,2],[88,81,6],[94,79,2],
+  [96,79,4],[100,76,4],[104,72,4],[108,79,4],[112,74,4],[116,79,4],[120,83,8]];
+const CONE_MEL=[[0,69,4],[4,70,4],[8,69,8],[16,72,4],[20,70,4],[24,69,8],[32,69,4],[36,70,4],[40,73,4],[44,72,4],[48,70,12],[60,69,4],
+  [64,81,4],[68,82,4],[72,81,8],[80,84,4],[84,82,4],[88,81,8],[96,81,2],[98,82,2],[100,85,4],[104,84,4],[108,82,4],[112,81,16]];
+
+const SONGS = {
+  title:{bpm:84, intro:8, mel:8, reps:1, end:[45,57,64,69,76,81],
+    play(s,t,q,sec,ms){
+      const bar=Math.floor(s/16)%4, b=s%16, ch=PROG[bar];
+      if(b===0) for(const n of triad(ch[0],ch[1])){ syn(t,n,16*q,{vol:0.045,cut:1300,det:-9,att:0.35,rel:0.5}); syn(t,n,16*q,{vol:0.045,cut:1300,det:9,att:0.35,rel:0.5}); }
+      if(b===0||b===8) syn(t,ch[0]-24,8*q,{type:'square',vol:0.09,cut:500});
+      if(b===0||b===8) drum(t,'kick'); if(b===4||b===12) drum(t,'snare');
+      if(sec==='intro'){
+        const L=[[0,69,6],[6,72,2],[8,76,8],[16,77,6],[22,76,2],[24,72,8],[32,72,6],[38,74,2],[40,76,8],[48,74,4],[52,71,4],[56,67,8]];
+        // bar 8 climbs into the melody instead of falling: G B D G
+        const L8=[[112,67,4],[116,71,4],[120,74,4],[124,79,4]];
+        if(s>=112){ for(const [st,n,len] of L8) if(st===s) syn(t,n,len*q,{type:'square',vol:0.06,cut:2600,vib:14}); }
+        else for(const [st,n,len] of L) if(st===s%64) syn(t,n,len*q,{type:'square',vol:0.06,cut:2600,vib:14});
+      } else {
+        if(b%2===0) drum(t,'hat');
+        for(const [st,n,len] of TITLE_MEL) if(st===ms) lead(t,n,len*q,0.055);
+      }
+    }},
+  level:{bpm:128, intro:8, mel:16, reps:2, loop:true, end:[45,57,64,69,72,81],
+    play(s,t,q,sec,ms,rep){
+      const bar=Math.floor(s/16)%4, b=s%16, ch=PROG[bar], tr=triad(ch[0],ch[1]);
+      if(b%4===0) drum(t,'kick'); if(b===4||b===12) drum(t,'snare'); if(b%4===2) drum(t,'hat');
+      if(b%2===0) syn(t,ch[0]-24+(b%4===2?12:0),q*1.8,{type:'sawtooth',vol:0.08,cut:700});
+      const arp=[tr[0],tr[1],tr[2],tr[0]+12]; syn(t,arp[b%4]+12,q*0.9,{type:'square',vol:sec==='intro'?0.035:0.022,cut:2400});
+      if(b===0) for(const n of tr) syn(t,n,16*q,{vol:0.025,cut:1100,att:0.2,rel:0.3,det:7});
+      if(sec==='melody'){
+        if(s%64===0 && ms===0) drum(t,'crash');
+        for(const [st,n,len] of LEVEL_MEL) if(st===ms%128){ lead(t,n,len*q*0.95,0.05); if(rep===1) lead(t,n+12,len*q*0.95,0.022,3400); }
+      }
+    }},
+  cone:{bpm:100, intro:8, mel:8, reps:1, loop:true, end:[33,34,45,57,60,63],
+    play(s,t,q,sec,ms){
+      const bar=Math.floor(s/16)%4, b=s%16;
+      if(b===0){ syn(t,33,16*q,{vol:0.07,cut:500,att:0.2,rel:0.3}); syn(t,34,16*q,{vol:0.05,cut:500,att:0.2,rel:0.3}); }
+      if(b===0||b===3||b===6) for(const n of [57,60,63]) syn(t,n+(bar===3?-1:0),q*1.5,{vol:0.05,cut:1600});
+      if(b===12||b===14) drum(t,'tom'); if(b===0) drum(t,'kick');
+      if(sec==='intro'){ if(bar%2===1 && b%4===0) syn(t,[81,80,79,78][b/4],q*4,{type:'square',vol:0.045,cut:2200,vib:25}); }
+      else { if(b===8) drum(t,'snare');
+        for(const [st,n,len] of CONE_MEL) if(st===ms){ syn(t,n,len*q,{type:'square',vol:0.05,cut:2200,vib:30,rel:0.1}); syn(t,n-12,len*q,{vol:0.03,cut:1400,det:6,vib:30,rel:0.1}); } }
+    }}
+};
+
+function toWav(ch){
+  const n=ch[0].length;
+  let peak=0; for(const c of ch) for(let i=0;i<n;i++) peak=Math.max(peak,Math.abs(c[i]));
+  const gain=peak>0?0.89/peak:1, ab=new ArrayBuffer(44+n*4), v=new DataView(ab);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,'RIFF'); v.setUint32(4,36+n*4,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,2,true);
+  v.setUint32(24,44100,true); v.setUint32(28,44100*4,true); v.setUint16(32,4,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,n*4,true);
+  let o=44; for(let i=0;i<n;i++) for(const c of ch){ const s=Math.max(-1,Math.min(1,c[i]*gain)); v.setInt16(o,s*32767,true); o+=2; }
+  return ab;
+}
+async function render(name){
+  const S=SONGS[name], q=60/S.bpm/4, introSteps=S.intro*16, melSteps=S.mel*16*S.reps;
+  const total=introSteps+melSteps, off=S.loop?0:0.3, endT=off+total*q, len=endT+4;
+  setup(len);
+  for(let s=0;s<total;s++){
+    const t=off+s*q, sec=s<introSteps?'intro':'melody', ms=sec==='melody'?(s-introSteps)%(S.mel*16):0, rep=sec==='melody'?Math.floor((s-introSteps)/(S.mel*16)):0;
+    S.play(s,t,q,sec,ms,rep);
+  }
+  if(!S.loop){ drum(endT,'kick'); drum(endT,'crash'); drum(endT,'snare'); }
+  if(!S.loop) for(const n of S.end){ syn(endT,n,3.2,{vol:0.05,cut:1800,det:-7,rel:2.4}); syn(endT,n,3.2,{vol:0.05,cut:1800,det:7,rel:2.4}); }
+  const buf=await ac.startRendering();
+  let ch=[buf.getChannelData(0),buf.getChannelData(1)];
+  if(S.loop){ // seamless loop: fold the release tail that spills past the loop point back onto the start
+    const N=Math.round(total*q*44100);
+    ch=ch.map(c=>{ const o=c.slice(0,N); for(let i=N;i<c.length;i++) o[(i-N)%N]+=c[i]; return o; });
+  }
+  const bytes=new Uint8Array(toWav(ch)); let bin=''; for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));
+  return btoa(bin);
+}
+</script>
