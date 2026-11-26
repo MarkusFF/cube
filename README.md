@@ -4,6 +4,8 @@
 
 A playable take on the 2006 parody game ad *Cube*. Roll a white cube one tile at a time, collect the diamonds, reach the goal, and every goal leads to a new colour level: Blue, Green, Orange, and finally Red, where you face the dreaded Cone.
 
+This is an unofficial fan game. It is not affiliated with or endorsed by funnymovieinternet, the creator of the original [Cube ad](https://www.youtube.com/watch?v=4aGDCE6Nrz0).
+
 Rendered at 320×240 and pushed through JPEG compression twice per frame, at roughly 20 fps. Cutting edge 3d graphics.
 
 **Play:** open `index.html` in a browser (or the GitHub Pages site for this repo).

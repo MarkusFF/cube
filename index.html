@@ -47,6 +47,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:19px
 </div>
 <div class="help"><span class="keys"><b>ARROWS / WASD</b> roll Cube · <b>ANY KEY</b> continue · </span><b>M</b> mute · <span class="keys"><b>R</b> title screen · </span><span class="keys"><b>Z</b> zen mode · <b>X</b> credits (on the title screen) · </span>cutting edge 3d graphics</div>
 <div id="btns"><button id="zenbtn" type="button">Zen mode</button><button id="creditsbtn" type="button">Credits</button><a id="adbtn" href="https://www.youtube.com/watch?v=4aGDCE6Nrz0" target="_blank" rel="noopener">Original ad</a></div>
+<div id="adnote" class="help" style="font-size:13px;margin-top:8px">Fan-made game, not affiliated with the creator of the original ad.</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -659,7 +660,7 @@ function toggleZen(){ audio(); musicStarted=true; if(zen) toTitle(); else startZ
 const CREDITS=[
   {t:'CUBE',size:40},{t:'DEFENDER OF THE POLYVERSE',size:11,c:'#ffe45c'},{gap:1},
   {h:'A PROJECT BY',n:'MARKUS F'},{gap:1},
-  {h:'INSPIRED BY',n:'"CUBE" (2006)'},{t:'A PARODY GAME ADVERT BY FUNNYMOVIEINTERNET',size:9},{gap:1},
+  {h:'INSPIRED BY',n:'"CUBE" (2006)'},{t:'A PARODY GAME ADVERT BY FUNNYMOVIEINTERNET',size:9},{t:'THIS FAN GAME IS NOT AFFILIATED WITH OR',size:8,c:'#8a86a0'},{t:'ENDORSED BY THE CREATOR OF THE ORIGINAL',size:8,c:'#8a86a0'},{gap:1},
   {h:'CODING',n:'CLAUDE OPUS 5.5'},{h:'ART',n:'CLAUDE OPUS 5.5'},{h:'MUSIC',n:'CLAUDE OPUS 5.5'},
   {h:'FUNNY TEXT',n:'CLAUDE OPUS 5.5'},{h:'UNFUNNY TEXT',n:'ALSO CLAUDE OPUS 5.5'},{gap:1},
   {h:'CUBE',n:'AS ITSELF'},{h:'THE CONE',n:'AS THE CONE'},{gap:1},
@@ -862,7 +863,7 @@ zenBtn.addEventListener('click',()=>{ const now=performance.now();
   if(now<zenAsk){ zenAsk=0; toggleZen(); out.focus(); return; }
   zenAsk=now+2500; sfx.blip(); say(zen?'LEAVE ZEN? TAP AGAIN':'ZEN MODE? TAP AGAIN',2500); });
 function showCredits(){ audio(); musicStarted=true; zenAsk=0; sfx.blip(); stopMusic(); startCredits(); out.focus(); }
-const creditsBtn=document.getElementById('creditsbtn'), adBtn=document.getElementById('adbtn');
+const creditsBtn=document.getElementById('creditsbtn'), adBtn=document.getElementById('adbtn'), adNote=document.getElementById('adnote');
 creditsBtn.addEventListener('click',()=>{ if(state==='title') showCredits(); });
 for(const [id,d] of [['up',[0,-1]],['down',[0,1]],['left',[-1,0]],['right',[1,0]]])
   document.getElementById(id).addEventListener('pointerdown',e=>{ e.preventDefault(); audio(); tryMove(d[0],d[1]); });
@@ -959,7 +960,7 @@ function frame(now){
   requestAnimationFrame(frame);
   const dt=Math.min(60,now-last); last=now; update(now,dt);
   const showZen=state==='title'||(zen&&state==='play'); if(zenBtn.hidden===showZen) zenBtn.hidden=!showZen;
-  const showCr=state==='title'; if(creditsBtn.hidden===showCr) creditsBtn.hidden=!showCr, adBtn.hidden=!showCr;
+  const showCr=state==='title'; if(creditsBtn.hidden===showCr) creditsBtn.hidden=!showCr, adBtn.hidden=!showCr, adNote.hidden=!showCr;
   const zl=zen?'Leave zen':'Zen mode'; if(zenBtn.textContent!==zl) zenBtn.textContent=zl;
   if(!busy && now-lastPresent>=50){            // ~20 fps, like it was meant to be
     lastPresent=now; const inAd=state==='ad'&&adPhase==='ad';
