@@ -28,7 +28,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:19px
 #pad button{font:inherit;font-size:26px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;touch-action:manipulation}
 #pad button:active{background:var(--edge)}
 #pad button:focus-visible,#btns button:focus-visible,#btns a:focus-visible{outline:2px solid var(--keyfg)}
-#btns{margin-top:14px;display:flex;gap:10px;justify-content:center}
+#btns{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
 #btns button,#btns a{text-decoration:none;font:inherit;font-size:17px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;padding:4px 14px}
 #up{grid-column:2}#left{grid-column:1;grid-row:2}#down{grid-column:2;grid-row:2}#right{grid-column:3;grid-row:2}
 @media (pointer:coarse){#pad{display:grid}.keys{display:none}#screen{width:min(100%,calc((100dvh - 230px) * 4 / 3))}}
