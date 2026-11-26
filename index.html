@@ -27,9 +27,9 @@ body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:19px
 #pad{display:none;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,52px);gap:6px}
 #pad button{font:inherit;font-size:26px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;touch-action:manipulation}
 #pad button:active{background:var(--edge)}
-#pad button:focus-visible,#btns button:focus-visible{outline:2px solid var(--keyfg)}
+#pad button:focus-visible,#btns button:focus-visible,#btns a:focus-visible{outline:2px solid var(--keyfg)}
 #btns{margin-top:14px;display:flex;gap:10px;justify-content:center}
-#btns button{font:inherit;font-size:17px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;padding:4px 14px}
+#btns button,#btns a{text-decoration:none;font:inherit;font-size:17px;background:var(--key);color:var(--keyfg);border:1px solid var(--edge);border-radius:6px;padding:4px 14px}
 #up{grid-column:2}#left{grid-column:1;grid-row:2}#down{grid-column:2;grid-row:2}#right{grid-column:3;grid-row:2}
 @media (pointer:coarse){#pad{display:grid}.keys{display:none}#screen{width:min(100%,calc((100dvh - 230px) * 4 / 3))}}
 </style>
@@ -46,7 +46,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:19px
   <button id="right" aria-label="Roll right">▶</button>
 </div>
 <div class="help"><span class="keys"><b>ARROWS / WASD</b> roll Cube · <b>ANY KEY</b> continue · </span><b>M</b> mute · <span class="keys"><b>R</b> title screen · </span><span class="keys"><b>Z</b> zen mode · <b>X</b> credits (on the title screen) · </span>cutting edge 3d graphics</div>
-<div id="btns"><button id="zenbtn" type="button">Zen mode</button><button id="creditsbtn" type="button">Credits</button></div>
+<div id="btns"><button id="zenbtn" type="button">Zen mode</button><button id="creditsbtn" type="button">Credits</button><a id="adbtn" href="https://www.youtube.com/watch?v=4aGDCE6Nrz0" target="_blank" rel="noopener">Original ad</a></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -862,7 +862,7 @@ zenBtn.addEventListener('click',()=>{ const now=performance.now();
   if(now<zenAsk){ zenAsk=0; toggleZen(); out.focus(); return; }
   zenAsk=now+2500; sfx.blip(); say(zen?'LEAVE ZEN? TAP AGAIN':'ZEN MODE? TAP AGAIN',2500); });
 function showCredits(){ audio(); musicStarted=true; zenAsk=0; sfx.blip(); stopMusic(); startCredits(); out.focus(); }
-const creditsBtn=document.getElementById('creditsbtn');
+const creditsBtn=document.getElementById('creditsbtn'), adBtn=document.getElementById('adbtn');
 creditsBtn.addEventListener('click',()=>{ if(state==='title') showCredits(); });
 for(const [id,d] of [['up',[0,-1]],['down',[0,1]],['left',[-1,0]],['right',[1,0]]])
   document.getElementById(id).addEventListener('pointerdown',e=>{ e.preventDefault(); audio(); tryMove(d[0],d[1]); });
@@ -959,7 +959,7 @@ function frame(now){
   requestAnimationFrame(frame);
   const dt=Math.min(60,now-last); last=now; update(now,dt);
   const showZen=state==='title'||(zen&&state==='play'); if(zenBtn.hidden===showZen) zenBtn.hidden=!showZen;
-  const showCr=state==='title'; if(creditsBtn.hidden===showCr) creditsBtn.hidden=!showCr;
+  const showCr=state==='title'; if(creditsBtn.hidden===showCr) creditsBtn.hidden=!showCr, adBtn.hidden=!showCr;
   const zl=zen?'Leave zen':'Zen mode'; if(zenBtn.textContent!==zl) zenBtn.textContent=zl;
   if(!busy && now-lastPresent>=50){            // ~20 fps, like it was meant to be
     lastPresent=now; const inAd=state==='ad'&&adPhase==='ad';
